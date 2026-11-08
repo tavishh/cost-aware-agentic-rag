@@ -84,7 +84,7 @@ cost-aware-agentic-rag/
 Setup instructions will be added as the codebase develops.
 
 ```bash
-git clone https://github.com/<org-or-user>/cost-aware-agentic-rag.git
+git clone https://github.com/tavishh/cost-aware-agentic-rag.git
 cd cost-aware-agentic-rag
 pip install -r requirements.txt
 ```
