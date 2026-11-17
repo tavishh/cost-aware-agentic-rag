@@ -13,7 +13,7 @@ p.add_argument("--model", default="Qwen/Qwen2.5-7B-Instruct")
 p.add_argument("--cache", default="outputs/retrieval/nq_test_bm25_top50.jsonl")
 p.add_argument("--n", type=int, default=500)
 p.add_argument("--context", choices=["accumulate", "latest"], default="accumulate")
-p.add_argument("--prompt", choices=["simple", "fewshot"], default="fewshot")
+p.add_argument("--prompt", choices=["simple", "fewshot"], default="simple")
 p.add_argument("--shots", type=int, default=5)
 args = p.parse_args()
 
