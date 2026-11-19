@@ -15,7 +15,7 @@ export HF_HUB_OFFLINE=1
 cd ~/cost-aware-agentic-rag
 
 MODEL=meta-llama/Llama-3.1-8B-Instruct
-declare -A N=([test]=500 [train]=800 [dev]=200 [arag_test]=500 [dtrain]=4000 [ddev]=500)
+declare -A N=([test]=500 [train]=800 [dev]=200 [arag_test]=500 [dtrain]=4000 [ddev]=500 [dtraintop]=1137 [ddevtop]=141)
 
 for SPLIT in ${SPLITS:-test train dev}; do
   echo "===== $SPLIT ====="
