@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH --partition=rtx-batch
-#SBATCH --account=p2026_0112_neu
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
@@ -10,7 +9,7 @@
 set -e
 module load miniforge3/25.3.0-3
 eval "$(conda shell.bash hook)"
-export HF_HOME=/scratch/li_z33_neu/hf_cache
+export HF_HOME=${HF_HOME:-$HOME/.cache/huggingface}
 export HF_HUB_OFFLINE=1
 cd ~/cost-aware-agentic-rag
 

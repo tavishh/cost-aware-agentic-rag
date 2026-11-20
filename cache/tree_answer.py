@@ -9,7 +9,7 @@ from tree_common import (load_jsonl, write_jsonl, work_dir, load_passages,
 from vllm import LLM, SamplingParams
 
 p = argparse.ArgumentParser()
-p.add_argument("--model", default="Qwen/Qwen2.5-7B-Instruct")
+p.add_argument("--model", default="meta-llama/Llama-3.1-8B-Instruct")
 p.add_argument("--cache", default="outputs/retrieval/nq_test_bm25_top50.jsonl")
 p.add_argument("--n", type=int, default=500)
 p.add_argument("--context", choices=["accumulate", "latest"], default="accumulate")

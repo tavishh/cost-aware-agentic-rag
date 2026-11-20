@@ -10,7 +10,7 @@ cache = "outputs/retrieval/dpr_nq_dev_questions.json"
 if os.path.exists(cache):
     dpr = set(json.load(open(cache)))
 else:
-    src = os.path.expanduser("~/Downloads/dpr/biencoder-nq-dev.json.gz")
+    src = os.environ.get("DPR_NQ_DEV", "data/raw/biencoder-nq-dev.json.gz")
     data = json.load(gzip.open(src, "rt"))
     dpr = {norm(x["question"]) for x in data}
     json.dump(sorted(dpr), open(cache, "w"))
