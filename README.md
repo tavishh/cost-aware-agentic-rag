@@ -113,3 +113,17 @@ pip install -r requirements.txt
 ## License
 
 TBD
+
+
+## Role 3 development
+
+The first Role 3 deliverable provides shared inference contracts and a synthetic
+verifier fixture. See [the contract and integration guide](docs/role3_contract.md)
+for interfaces, uncertainty semantics, cache requirements and team handoffs.
+Model adapters and threshold policies are subsequent work.
+
+Run the dependency-free contract tests from the repository root:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py' -v
+```
