@@ -85,6 +85,29 @@ def threshold(nodes, t, t_last, k):
     return choose
 
 
+def build_caches(*node_dicts):
+    """Raw features and valid actions for every node the rule-based policies may visit."""
+    global feats_cache, valid_actions_cache
+    feats_cache, valid_actions_cache = {}, {}
+    for nodes in node_dicts:
+        for i in nodes:
+            feats_cache[i] = node_features(nodes, i)
+            valid_actions_cache[i] = valid_actions(nodes, i)
+
+
+def tune_best_fixed(val_env):
+    """Best R/W plan (length 0-3, then ANSWER) on validation."""
+    plans = [""] + ["".join(p) for k in (1, 2, 3) for p in itertools.product("RW", repeat=k)]
+    return max(plans, key=lambda p: summary(play(val_env, fixed_path(p)))["reward"])
+
+
+def tune_threshold(val_env, val_nodes):
+    """(t, t_last, k) for the confidence-threshold rule, chosen on validation."""
+    grid = [i / 20 for i in range(21)]
+    return max(((t, tl, k) for t in grid for tl in grid if tl <= t for k in (0, 1, 2, 3)),
+               key=lambda g: summary(play(val_env, threshold(val_nodes, *g)))["reward"])
+
+
 def load_scaler(ckpt):
     s = Scaler()
     s.mean, s.std = ckpt["mean"], ckpt["std"]
@@ -92,7 +115,6 @@ def load_scaler(ckpt):
 
 
 def main(args):
-    global feats_cache, valid_actions_cache
     tr_nodes, all_roots = load_trees(args.train)
     _, val_roots = split_roots(all_roots, n_val=args.n_val)
     dv_nodes, dv_roots = load_trees(args.dev)
@@ -100,12 +122,7 @@ def main(args):
     val_env = TreeEnv(tr_nodes, val_roots, **cost)
     dev_env = TreeEnv(dv_nodes, dv_roots, **cost)
 
-    # Raw (unscaled) features and valid actions for every node the baselines may visit.
-    feats_cache, valid_actions_cache = {}, {}
-    for nodes in (tr_nodes, dv_nodes):
-        for i, n in nodes.items():
-            feats_cache[i] = node_features(nodes, i)
-            valid_actions_cache[i] = valid_actions(nodes, i)
+    build_caches(tr_nodes, dv_nodes)
 
     policies = {}
     once = play(dev_env, fixed_path("R"))
@@ -113,15 +130,10 @@ def main(args):
     policies["answer at root"] = play(dev_env, fixed_path(""))
     policies["R/R/R"] = play(dev_env, fixed_path("RRR"))
 
-    # Best fixed path, chosen on validation.
-    plans = [""] + ["".join(p) for k in (1, 2, 3) for p in itertools.product("RW", repeat=k)]
-    best_plan = max(plans, key=lambda p: summary(play(val_env, fixed_path(p)))["reward"])
+    # Best fixed path and confidence threshold, both chosen on validation.
+    best_plan = tune_best_fixed(val_env)
     policies[f"best fixed ({best_plan or 'root'})"] = play(dev_env, fixed_path(best_plan))
-
-    # Confidence threshold, tuned on validation.
-    grid = [i / 20 for i in range(21)]
-    best = max(((t, tl, k) for t in grid for tl in grid if tl <= t for k in (0, 1, 2, 3)),
-               key=lambda g: summary(play(val_env, threshold(tr_nodes, *g)))["reward"])
+    best = tune_threshold(val_env, tr_nodes)
     policies[f"threshold (t={best[0]}, t_last={best[1]}, k={best[2]})"] = \
         play(dev_env, threshold(dv_nodes, *best))
 
@@ -145,14 +157,16 @@ def main(args):
     policies["oracle"] = play(dev_env, lambda n: best_act[n])
 
     print(f"dev, lambda={args.lam}, c_ret={args.c_ret}, c_llm={args.c_llm}")
+    thr = next(rows for name, rows in policies.items() if name.startswith("threshold"))
     print(f"{'policy':44s} {'reward':>7s} {'InAcc':>6s} {'abst':>5s} {'selAcc':>6s} "
-          f"{'RC':>5s} {'LMC':>5s}   diff vs retrieve-once [95% CI]")
+          f"{'RC':>5s} {'LMC':>5s}   vs retrieve-once [95% CI]    vs threshold [95% CI]")
     for name, rows in policies.items():
         s = summary(rows)
         d, lo, hi = paired_ci(rows, once)
+        d2, lo2, hi2 = paired_ci(rows, thr)
         print(f"{name:44s} {s['reward']:+7.3f} {s['InAcc']:6.3f} {s['abstain']:5.3f} "
               f"{s['sel_acc']:6.3f} {s['RC']:5.2f} {s['LMC']:5.2f}   "
-              f"{d:+.3f} [{lo:+.3f}, {hi:+.3f}]")
+              f"{d:+.3f} [{lo:+.3f}, {hi:+.3f}]   {d2:+.3f} [{lo2:+.3f}, {hi2:+.3f}]")
 
 
 if __name__ == "__main__":
