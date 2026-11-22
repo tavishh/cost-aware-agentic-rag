@@ -11,7 +11,10 @@ Usage (from the repo root):
 import argparse
 import csv
 import os
+import statistics
 from types import SimpleNamespace
+
+import torch
 
 from rl import baselines as B
 from rl.dqn import featurize
@@ -51,6 +54,8 @@ def plot(rows, out, min_coverage=0.02):
     # dropped (accuracy undefined or based on a handful of questions).
     style = {"threshold": "o-", "FQI": "s-", "best fixed": "^"}
     for name, rs in groups.items():
+        if name.startswith("FQI s"):                     # per-seed runs: shown via the mean
+            continue
         rs = [r for r in sorted(rs, key=lambda r: r["lam"])
               if 1 - r["abstain"] >= min_coverage]
         if name in ("retrieve once", "oracle"):          # same at every lambda: one marker
@@ -72,7 +77,7 @@ def plot(rows, out, min_coverage=0.02):
     d = [r["diff_vs_threshold"] for r in fq]
     err = [[r["diff_vs_threshold"] - r["ci_lo"] for r in fq],
            [r["ci_hi"] - r["diff_vs_threshold"] for r in fq]]
-    right.errorbar(lams, d, yerr=err, fmt="s-", capsize=4, label="FQI − threshold")
+    right.errorbar(lams, d, yerr=err, fmt="s-", capsize=4, label="FQI (seed mean) − threshold")
     right.axhline(0, color="gray", lw=1)
     right.set_xscale("log", base=2)
     right.set_xticks(lams)
@@ -99,6 +104,7 @@ def main(args):
     tr_idx, tr_X, tr_M = featurize(tr_nodes, scaler)
     dv_idx, dv_X, dv_M = featurize(dv_nodes, scaler)
 
+    seeds = [int(x) for x in args.seeds.split(",")]
     rows = []
     for lam in [float(x) for x in args.lams.split(",")]:
         cost = dict(lam=lam, c_ret=args.c_ret, c_llm=args.c_llm)
@@ -110,8 +116,17 @@ def main(args):
         pol["best fixed"] = B.play(dev_env, B.fixed_path(plan))
         t = B.tune_threshold(val_env, tr_nodes)
         pol["threshold"] = B.play(dev_env, B.threshold(dv_nodes, *t))
-        nets = train_fqi(tr_nodes, tr_roots, val_env, tr_idx, tr_X, tr_M, cost)
-        pol["FQI"] = B.play(dev_env, fqi_chooser(nets, dv_nodes, dv_idx, dv_X, dv_M))
+        # FQI, once per seed. "FQI" is the seed average (per-question rewards averaged).
+        runs = []
+        for sd in seeds:
+            torch.manual_seed(sd)
+            nets = train_fqi(tr_nodes, tr_roots, val_env, tr_idx, tr_X, tr_M, cost)
+            runs.append(B.play(dev_env, fqi_chooser(nets, dv_nodes, dv_idx, dv_X, dv_M)))
+        if len(runs) > 1:
+            for sd, res in zip(seeds, runs):
+                pol[f"FQI s{sd}"] = res
+        pol["FQI"] = [tuple(sum(run[i][j] for run in runs) / len(runs) for j in range(5))
+                      for i in range(len(runs[0]))]
         _, best_act = solve(dev_env)
         pol["oracle"] = B.play(dev_env, lambda n: best_act[n])
 
@@ -125,6 +140,12 @@ def main(args):
                   f"LMC {s['LMC']:.2f}   vs threshold {d:+.3f} [{lo:+.3f}, {hi:+.3f}]")
             rows.append({"lam": lam, "group": name, **s,
                          "diff_vs_threshold": d, "ci_lo": lo, "ci_hi": hi})
+        if len(runs) > 1:
+            seed_r = [B.summary(r)["reward"] for r in runs]
+            wins = sum(1 for r in runs if B.paired_ci(r, pol["threshold"])[1] > 0)
+            print(f"  FQI over {len(runs)} seeds: reward {statistics.mean(seed_r):+.3f} "
+                  f"± {statistics.stdev(seed_r):.3f} (std);  seeds significantly above "
+                  f"threshold: {wins}/{len(runs)}")
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out + ".csv", "w", newline="") as f:
@@ -143,5 +164,6 @@ if __name__ == "__main__":
     p.add_argument("--c_ret", type=float, default=0.05)
     p.add_argument("--c_llm", type=float, default=0.02)
     p.add_argument("--n_val", type=int, default=500)
+    p.add_argument("--seeds", default="0", help="FQI seeds, e.g. 0,1,2,3,4")
     p.add_argument("--out", default="outputs/rl/sweep_bm25")
     main(p.parse_args())
