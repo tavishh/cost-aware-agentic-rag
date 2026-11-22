@@ -28,6 +28,17 @@ def child_id(node_id, action):
     return f"{node_id}/{CHILD_TAG[action]}"
 
 
+def split_roots(roots, n_val=500, seed=0):
+    """Split questions into (train_roots, val_roots) with a fixed seed.
+    Validation is for choosing checkpoints/settings; dev stays for reporting."""
+    import random
+    qids = sorted(roots)
+    random.Random(seed).shuffle(qids)
+    val = set(qids[:n_val])
+    return ({q: r for q, r in roots.items() if q not in val},
+            {q: r for q, r in roots.items() if q in val})
+
+
 def summarize(nodes, roots):
     """Quick sanity check: question count, nodes per question, and nodes per depth."""
     depth = Counter(n["step"] for n in nodes.values())

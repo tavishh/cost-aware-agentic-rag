@@ -15,7 +15,7 @@ import torch.nn as nn
 from rl.env import ACTIONS, TreeEnv, action_mask
 from rl.features import FEATURE_NAMES, Scaler, node_features
 from rl.oracle import run_policy, solve
-from rl.tree_data import load_trees
+from rl.tree_data import load_trees, split_roots
 
 
 class QNet(nn.Module):
@@ -59,14 +59,18 @@ def train(args):
     random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-    tr_nodes, tr_roots = load_trees(args.train)
+    tr_nodes, all_roots = load_trees(args.train)
+    tr_roots, val_roots = split_roots(all_roots, n_val=args.n_val)
     dv_nodes, dv_roots = load_trees(args.dev)
-    scaler = Scaler().fit([node_features(tr_nodes, i) for i in tr_nodes])
-    tr_idx, tr_X, tr_M = featurize(tr_nodes, scaler)
+    # Scaler is fitted on the training questions only (not validation).
+    scaler = Scaler().fit([node_features(tr_nodes, i) for i, n in tr_nodes.items()
+                           if n["qid"] in tr_roots])
+    tr_idx, tr_X, tr_M = featurize(tr_nodes, scaler)   # covers train and val nodes
     dv_idx, dv_X, dv_M = featurize(dv_nodes, scaler)
 
     cost = dict(lam=args.lam, c_ret=args.c_ret, c_llm=args.c_llm)
     env = TreeEnv(tr_nodes, tr_roots, **cost)
+    val_env = TreeEnv(tr_nodes, val_roots, **cost)
     dev_env = TreeEnv(dv_nodes, dv_roots, **cost)
 
     net = QNet(len(FEATURE_NAMES), len(ACTIONS))
@@ -124,8 +128,8 @@ def train(args):
                 target.load_state_dict(net.state_dict())
 
         if (ep + 1) % args.eval_every == 0:
-            m = run_policy(dev_env, greedy_chooser(net, dv_idx, dv_X, dv_M))
-            print(f"ep {ep + 1:6d}  eps {eps:.2f}  dev reward {m['reward']:+.3f}  "
+            m = run_policy(val_env, greedy_chooser(net, tr_idx, tr_X, tr_M))
+            print(f"ep {ep + 1:6d}  eps {eps:.2f}  val reward {m['reward']:+.3f}  "
                   f"InAcc {m['correct']:.3f}  abstain {m['abstained']:.3f}  "
                   f"sel.acc {m['selective_acc']:.3f}  RC {m['retrieval_calls']:.2f}  "
                   f"LMC {m['llm_calls']:.2f}  ({time.time() - t0:.0f}s)")
@@ -133,7 +137,7 @@ def train(args):
                 best_dev = m["reward"]
                 best_state = {k: v.clone() for k, v in net.state_dict().items()}
 
-    # Final report on dev: last checkpoint, best checkpoint, and the oracle.
+    # Final report on dev: last checkpoint, best-on-validation checkpoint, and the oracle.
     last = run_policy(dev_env, greedy_chooser(net, dv_idx, dv_X, dv_M))
     print("\nlast DQN on dev:", {k: round(v, 3) for k, v in last.items()})
     if best_state is None:                  # no evaluation ran: keep the final weights
@@ -142,7 +146,7 @@ def train(args):
     m = run_policy(dev_env, greedy_chooser(net, dv_idx, dv_X, dv_M))
     _, best = solve(dev_env)
     o = run_policy(dev_env, lambda n: best[n])
-    print("best DQN on dev:", {k: round(v, 3) for k, v in m.items()})
+    print("best-on-val DQN on dev:", {k: round(v, 3) for k, v in m.items()})
     print("oracle on dev:  ", {k: round(v, 3) for k, v in o.items()})
 
     if args.save:
@@ -166,6 +170,7 @@ if __name__ == "__main__":
     p.add_argument("--target_every", type=int, default=500)
     p.add_argument("--eval_every", type=int, default=1000)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--n_val", type=int, default=500)
     p.add_argument("--double", type=int, default=1)      # 1 = Double DQN, 0 = standard DQN
     p.add_argument("--save", default=None)
     train(p.parse_args())
