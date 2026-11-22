@@ -34,7 +34,7 @@ def train_fqi(tr_nodes, tr_roots, val_env, tr_idx, tr_X, tr_M, cost, grid=(50, 1
     return best[1]
 
 
-def plot(rows, out):
+def plot(rows, out, min_coverage=0.02):
     try:
         import matplotlib
         matplotlib.use("Agg")
@@ -45,19 +45,43 @@ def plot(rows, out):
     groups = {}
     for r in rows:
         groups.setdefault(r["group"], []).append(r)
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
+    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 4.2))
+
+    # Left: selective accuracy vs coverage. Points answering < 2% of questions are
+    # dropped (accuracy undefined or based on a handful of questions).
+    style = {"threshold": "o-", "FQI": "s-", "best fixed": "^"}
     for name, rs in groups.items():
-        rs = sorted(rs, key=lambda r: r["lam"])
-        cov = [1 - r["abstain"] for r in rs]
-        axes[0].plot(cov, [r["sel_acc"] for r in rs], "o-", label=name)
-        axes[1].plot([r["LMC"] for r in rs], [r["InAcc"] for r in rs], "o-", label=name)
-    axes[0].set_xlabel("coverage (share of questions answered)")
-    axes[0].set_ylabel("selective accuracy (correct / answered)")
-    axes[0].set_title("Accuracy vs coverage (one point per lambda)")
-    axes[1].set_xlabel("LLM calls per question")
-    axes[1].set_ylabel("InAcc (correct / all questions)")
-    axes[1].set_title("Accuracy vs cost")
-    for ax in axes:
+        rs = [r for r in sorted(rs, key=lambda r: r["lam"])
+              if 1 - r["abstain"] >= min_coverage]
+        if name in ("retrieve once", "oracle"):          # same at every lambda: one marker
+            rs = rs[:1]
+        if rs:
+            left.plot([1 - r["abstain"] for r in rs], [r["sel_acc"] for r in rs],
+                      style.get(name, "D"), label=name, markersize=6)
+            if name in ("threshold", "FQI"):
+                for r in rs:
+                    left.annotate(f"λ={r['lam']:g}", (1 - r["abstain"], r["sel_acc"]),
+                                  fontsize=7, xytext=(4, 4), textcoords="offset points")
+    left.set_xlabel("coverage (share of questions answered)")
+    left.set_ylabel("selective accuracy (correct / answered)")
+    left.set_title("Accuracy vs coverage")
+
+    # Right: FQI minus threshold reward per lambda, with 95% paired-bootstrap CI.
+    fq = sorted(groups["FQI"], key=lambda r: r["lam"])
+    lams = [r["lam"] for r in fq]
+    d = [r["diff_vs_threshold"] for r in fq]
+    err = [[r["diff_vs_threshold"] - r["ci_lo"] for r in fq],
+           [r["ci_hi"] - r["diff_vs_threshold"] for r in fq]]
+    right.errorbar(lams, d, yerr=err, fmt="s-", capsize=4, label="FQI − threshold")
+    right.axhline(0, color="gray", lw=1)
+    right.set_xscale("log", base=2)
+    right.set_xticks(lams)
+    right.set_xticklabels([f"{x:g}" for x in lams])
+    right.set_xlabel("λ (wrong-answer penalty)")
+    right.set_ylabel("reward difference (dev)")
+    right.set_title("FQI vs threshold, 95% CI")
+
+    for ax in (left, right):
         ax.grid(alpha=0.3)
         ax.legend(fontsize=8)
     fig.tight_layout()
@@ -91,7 +115,8 @@ def main(args):
         _, best_act = solve(dev_env)
         pol["oracle"] = B.play(dev_env, lambda n: best_act[n])
 
-        print(f"\nlambda={lam}  (best fixed: {plan or 'root'}, threshold t/t_last/k: {t})")
+        print(f"\nlambda={lam}  (best fixed: {plan or 'root'}, threshold: {t[0]}, "
+              f"t={t[1]:.3g}, t_last={t[2]:.3g}, k={t[3]})")
         for name, res in pol.items():
             s = B.summary(res)
             d, lo, hi = B.paired_ci(res, pol["threshold"])
@@ -114,7 +139,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--train", required=True)
     p.add_argument("--dev", required=True)
-    p.add_argument("--lams", default="0.25,0.5,1,2,4")
+    p.add_argument("--lams", default="0.25,0.5,1,2")
     p.add_argument("--c_ret", type=float, default=0.05)
     p.add_argument("--c_llm", type=float, default=0.02)
     p.add_argument("--n_val", type=int, default=500)

@@ -24,7 +24,6 @@ from rl.fqi import chooser as fqi_chooser
 from rl.oracle import solve
 from rl.tree_data import load_trees, split_roots
 
-PROB = FEATURE_NAMES.index("first_token_prob")
 
 
 def play(env, choose):
@@ -71,17 +70,27 @@ def fixed_path(plan):
     return choose
 
 
-def threshold(nodes, t, t_last, k):
-    """Answer when confident, otherwise retrieve again; abstain if still unsure at step k."""
+# Uncertainty signals the threshold rule may use. sign=+1: higher means more confident.
+SIGNALS = {"first_token_prob": 1, "mean_nll": -1, "max_nll": -1,
+           "mean_entropy": -1, "max_entropy": -1}
+QUANTILES = [0, .1, .2, .3, .4, .5, .6, .7, .8, .85, .9, .93, .95, .97, .98, .99, .995, 1.0]
+
+
+def confidence(node_id, signal):
+    return SIGNALS[signal] * feats_cache[node_id][FEATURE_NAMES.index(signal)]
+
+
+def threshold(nodes, signal, t, t_last, k):
+    """Answer if confidence >= t; otherwise retrieve again (up to step k);
+    at the last step answer if confidence >= t_last, else abstain."""
     def choose(node_id):
-        p = feats_cache[node_id][PROB]
+        c = confidence(node_id, signal)
         step = nodes[node_id]["step"]
-        can_go = Action.RETRIEVE in valid_actions_cache[node_id]
-        if p >= t:
+        if c >= t:
             return Action.ANSWER
-        if step < k and can_go:
+        if step < k and Action.RETRIEVE in valid_actions_cache[node_id]:
             return Action.RETRIEVE
-        return Action.ANSWER if p >= t_last else Action.ABSTAIN
+        return Action.ANSWER if c >= t_last else Action.ABSTAIN
     return choose
 
 
@@ -102,9 +111,19 @@ def tune_best_fixed(val_env):
 
 
 def tune_threshold(val_env, val_nodes):
-    """(t, t_last, k) for the confidence-threshold rule, chosen on validation."""
-    grid = [i / 20 for i in range(21)]
-    return max(((t, tl, k) for t in grid for tl in grid if tl <= t for k in (0, 1, 2, 3)),
+    """(signal, t, t_last, k) for the threshold rule, chosen on validation.
+    Thresholds are quantiles of each signal over validation nodes (fine near the top),
+    plus +inf for t_last so 'never answer at the last step' is also possible."""
+    val_ids = [i for i, n in val_nodes.items() if n["qid"] in val_env.roots]
+    configs = []
+    for signal in SIGNALS:
+        vals = sorted(confidence(i, signal) for i in val_ids)
+        cuts = sorted({vals[min(len(vals) - 1, int(q * len(vals)))] for q in QUANTILES})
+        for t in cuts + [float("inf")]:
+            for tl in [c for c in cuts if c <= t] + [float("inf")]:
+                for k in (0, 1, 2, 3):
+                    configs.append((signal, t, tl, k))
+    return max(configs,
                key=lambda g: summary(play(val_env, threshold(val_nodes, *g)))["reward"])
 
 
@@ -134,7 +153,7 @@ def main(args):
     best_plan = tune_best_fixed(val_env)
     policies[f"best fixed ({best_plan or 'root'})"] = play(dev_env, fixed_path(best_plan))
     best = tune_threshold(val_env, tr_nodes)
-    policies[f"threshold (t={best[0]}, t_last={best[1]}, k={best[2]})"] = \
+    policies[f"threshold ({best[0]}, t={best[1]:.3g}, t_last={best[2]:.3g}, k={best[3]})"] = \
         play(dev_env, threshold(dv_nodes, *best))
 
     # Saved learned policies.
