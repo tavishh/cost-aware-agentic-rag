@@ -32,7 +32,7 @@ def solve(env):
     # Deepest nodes first, so children are always solved before their parents.
     for node_id in sorted(env.nodes, key=lambda n: -env.nodes[n]["step"]):
         options = {a: action_value(env, node_id, a, value)
-                   for a in valid_actions(env.nodes, node_id)}
+                   for a in valid_actions(env.nodes, node_id, env.allow_abstain)}
         best[node_id] = max(options, key=options.get)
         value[node_id] = options[best[node_id]]
     return value, best

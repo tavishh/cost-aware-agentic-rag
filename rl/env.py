@@ -15,18 +15,21 @@ ACTIONS = (Action.ANSWER, Action.RETRIEVE, Action.REWRITE, Action.ABSTAIN)
 TERMINAL = (Action.ANSWER, Action.ABSTAIN)
 
 
-def valid_actions(nodes, node_id):
-    """Actions allowed at node_id. RETRIEVE/REWRITE need the child to exist in the cache."""
+def valid_actions(nodes, node_id, allow_abstain=True):
+    """Actions allowed at node_id. RETRIEVE/REWRITE need the child to exist in the cache.
+    allow_abstain=False removes ABSTAIN (used for the no-abstention accuracy-cost frontier)."""
     allowed = []
     for a in ACTIONS:
+        if a is Action.ABSTAIN and not allow_abstain:
+            continue
         if a in TERMINAL or child_id(node_id, a.value) in nodes:
             allowed.append(a)
     return allowed
 
 
-def action_mask(nodes, node_id):
+def action_mask(nodes, node_id, allow_abstain=True):
     """Boolean mask in ACTIONS order, used to block invalid actions in the DQN."""
-    allowed = valid_actions(nodes, node_id)
+    allowed = valid_actions(nodes, node_id, allow_abstain)
     return [a in allowed for a in ACTIONS]
 
 
@@ -52,8 +55,10 @@ def inacc(pred, golds, strict=True):
 class TreeEnv:
     """One episode = one question. The state is the current node in that question's tree."""
 
-    def __init__(self, nodes, roots, lam=1.0, c_ret=0.05, c_llm=0.02, strict=True):
+    def __init__(self, nodes, roots, lam=1.0, c_ret=0.05, c_llm=0.02, strict=True,
+                 allow_abstain=True):
         self.nodes, self.roots = nodes, roots
+        self.allow_abstain = allow_abstain
         self.lam, self.c_ret, self.c_llm, self.strict = lam, c_ret, c_llm, strict
         self.node_id, self.path, self.done, self.final_action = None, [], True, None
 
@@ -68,7 +73,7 @@ class TreeEnv:
         """Apply action. Returns (node_id, reward, done, info)."""
         if self.done:
             raise RuntimeError("episode is over; call reset()")
-        if action not in valid_actions(self.nodes, self.node_id):
+        if action not in valid_actions(self.nodes, self.node_id, self.allow_abstain):
             raise ValueError(f"{action} is not allowed at {self.node_id}")
 
         if action is Action.ANSWER:
@@ -77,11 +82,16 @@ class TreeEnv:
             correct = inacc(node["answer_call"]["text"], gold, self.strict)
             reward = 1.0 if correct else -self.lam
             self.done, self.final_action = True, action
-            return self.node_id, reward, True, self.episode_info(correct)
+            info = self.episode_info(correct)
+            # Evaluation only: literature-style substring InAcc of the same answer.
+            info["correct_substring"] = inacc(node["answer_call"]["text"], gold, strict=False)
+            return self.node_id, reward, True, info
 
         if action is Action.ABSTAIN:
             self.done, self.final_action = True, action
-            return self.node_id, 0.0, True, self.episode_info(None)
+            info = self.episode_info(None)
+            info["correct_substring"] = None
+            return self.node_id, 0.0, True, info
 
         # RETRIEVE or REWRITE: move to the child, pay for the retrieval and the new draft.
         reward = -self.c_ret - self.c_llm
