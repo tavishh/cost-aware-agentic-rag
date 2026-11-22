@@ -5,7 +5,7 @@ os.chdir(ROOT); sys.path.insert(0, os.path.join(ROOT, "cache"))
 import glob, json, time, argparse
 from collections import defaultdict
 from tree_common import (load_jsonl, write_jsonl, work_dir, load_passages,
-                         call_record, em, f1, inacc)
+                         call_record, em, f1, inacc, cache_stem)
 from vllm import LLM, SamplingParams
 
 p = argparse.ArgumentParser()
@@ -103,7 +103,7 @@ for n, o in zip(nodes, outs):
                      "latency_s": round(a["latency_s"] + sum(c["latency_s"] for c in rc), 4)}
 
 # ---------- 保存 ----------
-stem = os.path.basename(args.cache).split("_bm25")[0]
+stem = cache_stem(args.cache)
 suffix = ("_fewshot" if args.prompt == "fewshot" else "") \
          + ("_nostop" if args.stop == "none" else "") \
          + (f"_only-{args.only.replace(',', '-')}" if args.only else "")
