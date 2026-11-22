@@ -108,7 +108,12 @@ def train(args):
                 d = torch.tensor(d, dtype=torch.float32)
                 q = net(tr_X[s]).gather(1, a[:, None]).squeeze(1)
                 with torch.no_grad():
-                    q_next = masked_q(target(tr_X[s2]), tr_M[s2]).max(1).values
+                    if args.double:
+                        # Double DQN: online net picks the next action, target net scores it.
+                        a2 = masked_q(net(tr_X[s2]), tr_M[s2]).argmax(1, keepdim=True)
+                        q_next = target(tr_X[s2]).gather(1, a2).squeeze(1)
+                    else:
+                        q_next = masked_q(target(tr_X[s2]), tr_M[s2]).max(1).values
                     q_next = torch.where(d.bool(), torch.zeros_like(q_next), q_next)
                     y = r_ + args.gamma * q_next
                 loss = nn.functional.smooth_l1_loss(q, y)
@@ -128,14 +133,16 @@ def train(args):
                 best_dev = m["reward"]
                 best_state = {k: v.clone() for k, v in net.state_dict().items()}
 
-    # Final report on dev with the best checkpoint, next to the oracle.
+    # Final report on dev: last checkpoint, best checkpoint, and the oracle.
+    last = run_policy(dev_env, greedy_chooser(net, dv_idx, dv_X, dv_M))
+    print("\nlast DQN on dev:", {k: round(v, 3) for k, v in last.items()})
     if best_state is None:                  # no evaluation ran: keep the final weights
         best_state = net.state_dict()
     net.load_state_dict(best_state)
     m = run_policy(dev_env, greedy_chooser(net, dv_idx, dv_X, dv_M))
     _, best = solve(dev_env)
     o = run_policy(dev_env, lambda n: best[n])
-    print("\nbest DQN on dev:", {k: round(v, 3) for k, v in m.items()})
+    print("best DQN on dev:", {k: round(v, 3) for k, v in m.items()})
     print("oracle on dev:  ", {k: round(v, 3) for k, v in o.items()})
 
     if args.save:
@@ -151,13 +158,14 @@ if __name__ == "__main__":
     p.add_argument("--lam", type=float, default=0.5)
     p.add_argument("--c_ret", type=float, default=0.05)
     p.add_argument("--c_llm", type=float, default=0.02)
-    p.add_argument("--episodes", type=int, default=40000)
+    p.add_argument("--episodes", type=int, default=80000)
     p.add_argument("--batch", type=int, default=128)
     p.add_argument("--buffer", type=int, default=50000)
-    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--lr", type=float, default=3e-4)
     p.add_argument("--gamma", type=float, default=1.0)    # short episodes, costs are explicit
     p.add_argument("--target_every", type=int, default=500)
-    p.add_argument("--eval_every", type=int, default=4000)
+    p.add_argument("--eval_every", type=int, default=1000)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--double", type=int, default=1)      # 1 = Double DQN, 0 = standard DQN
     p.add_argument("--save", default=None)
     train(p.parse_args())
