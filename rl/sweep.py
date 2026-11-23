@@ -10,6 +10,7 @@ Usage (from the repo root):
 """
 import argparse
 import csv
+import itertools
 import os
 import statistics
 from types import SimpleNamespace
@@ -94,7 +95,7 @@ def plot(rows, out, min_coverage=0.02):
     print("saved:", out + ".png")
 
 
-def plot_cost(rows, out):
+def plot_cost(rows, out, no_abstain=False):
     """Accuracy vs cost: InAcc against LLM calls per question, one point per cost scale."""
     try:
         import matplotlib
@@ -121,8 +122,7 @@ def plot_cost(rows, out):
     ax.set_xlabel("LLM calls per question")
     ax.set_ylabel("InAcc (correct / all questions)")
     ax.set_title(f"Accuracy vs cost (lambda={rows[0]['lam']:g}, cost scaled"
-                 + (", no abstention)" if rows[0]["abstain"] == 0 and all(
-                     r["abstain"] == 0 for r in rows) else ")"))
+                 + (", no abstention)" if no_abstain else ")"))
     ax.grid(alpha=0.3)
     ax.legend(fontsize=8)
     fig.tight_layout()
@@ -175,13 +175,16 @@ def main(args):
         for name, res in pol.items():
             s = B.summary(res)
             d, lo, hi = B.paired_ci(res, pol["threshold"])
+            d2, lo2, hi2 = B.paired_ci(res, pol["best fixed"])
             print(f"  {name:14s} reward {s['reward']:+.3f}  InAcc {s['InAcc']:.3f} "
                   f"(sub {s['InAcc_sub']:.3f})  halluc {s['halluc']:.3f}  "
                   f"abstain {s['abstain']:.3f}  sel.acc {s['sel_acc']:.3f}  "
                   f"RC {s['RC']:.2f}  LMC {s['LMC']:.2f}   "
-                  f"vs threshold {d:+.3f} [{lo:+.3f}, {hi:+.3f}]")
+                  f"vs threshold {d:+.3f} [{lo:+.3f}, {hi:+.3f}]   "
+                  f"vs best fixed {d2:+.3f} [{lo2:+.3f}, {hi2:+.3f}]")
             rows.append({"lam": lam, "cost_scale": scale, "group": name, **s,
-                         "diff_vs_threshold": d, "ci_lo": lo, "ci_hi": hi})
+                         "diff_vs_threshold": d, "ci_lo": lo, "ci_hi": hi,
+                         "diff_vs_best_fixed": d2, "bf_lo": lo2, "bf_hi": hi2})
         if len(runs) > 1:
             seed_r = [B.summary(r)["reward"] for r in runs]
             wins = sum(1 for r in runs if B.paired_ci(r, pol["threshold"])[1] > 0)
@@ -192,10 +195,14 @@ def main(args):
     if len(scales) > 1:
         env0 = TreeEnv(dv_nodes, dv_roots, lam=lams[0], c_ret=args.c_ret, c_llm=args.c_llm,
                        allow_abstain=ab)
-        for plan in ["", "R", "RR", "RRR", "W", "RW", "RRW", "RWW"]:
+        # All 15 fixed paths (root + every R/W sequence of length 1-3). Their InAcc and
+        # LLM calls do not depend on the cost scale; the reward column is at cost x1.
+        plans = [""] + ["".join(p) for k in (1, 2, 3) for p in itertools.product("RW", repeat=k)]
+        for plan in plans:
             s = B.summary(B.play(env0, B.fixed_path(plan)))
-            rows.append({"lam": lams[0], "cost_scale": None, "group": f"path {plan or 'root'}",
-                         **s, "diff_vs_threshold": None, "ci_lo": None, "ci_hi": None})
+            rows.append({"lam": lams[0], "cost_scale": 1.0, "group": f"path {plan or 'root'}",
+                         **s, "diff_vs_threshold": None, "ci_lo": None, "ci_hi": None,
+                         "diff_vs_best_fixed": None, "bf_lo": None, "bf_hi": None})
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out + ".csv", "w", newline="") as f:
@@ -204,7 +211,7 @@ def main(args):
         w.writerows(rows)
     print("\nsaved:", args.out + ".csv")
     if len(scales) > 1:
-        plot_cost(rows, args.out)
+        plot_cost(rows, args.out, no_abstain=args.no_abstain)
     else:
         plot(rows, args.out)
 

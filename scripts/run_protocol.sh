@@ -42,13 +42,21 @@ case "$PHASE" in
 esac
 
 echo "== $NAME: $TAG phase, three sweeps in parallel (logs in $OUT) =="
+pids=()
 $PY -m rl.sweep --train "$TR" --dev "$EVAL" --seeds 0,1,2,3,4 \
   --out "$OUT/${TAG}_lambda" > "$OUT/${TAG}_lambda.log" 2>&1 &
+pids+=($!)
 $PY -m rl.sweep --train "$TR" --dev "$EVAL" --lams 0.25 --cost_scales 0,0.5,1,2,4 --seeds 0,1,2 \
   --out "$OUT/${TAG}_cost" > "$OUT/${TAG}_cost.log" 2>&1 &
+pids+=($!)
 $PY -m rl.sweep --train "$TR" --dev "$EVAL" --no_abstain --lams 0 --cost_scales 0,0.5,1,2,4 \
   --seeds 0,1,2 --out "$OUT/${TAG}_cost_noabst" > "$OUT/${TAG}_cost_noabst.log" 2>&1 &
-wait
+pids+=($!)
+# A bare `wait` always returns 0; check each sweep so a crash stops the script
+# before any marker is written (a failed test phase can then simply be rerun).
+for p in "${pids[@]}"; do
+  wait "$p" || { echo "A sweep failed: see the logs in $OUT. No marker written."; exit 1; }
+done
 
 echo "== summary: FQI vs threshold per setting =="
 for log in "$OUT/${TAG}_lambda.log" "$OUT/${TAG}_cost.log" "$OUT/${TAG}_cost_noabst.log"; do
@@ -59,9 +67,9 @@ done
 if [ "$PHASE" = dev ]; then
   touch "$OUT/.dev_done"
 else
-  touch "$OUT/.test_done"
   mkdir -p "results/$NAME"
   cp "$OUT"/dev_*.csv "$OUT"/dev_*.png "$OUT"/TEST_*.csv "$OUT"/TEST_*.png "results/$NAME"/
   echo "Copied CSVs and plots to results/$NAME"
+  touch "$OUT/.test_done"        # only after every sweep and the copy succeeded
 fi
 echo "done."
