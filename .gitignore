@@ -6,3 +6,5 @@ __pycache__/
 *.log
 logs/
 .vscode/
+data/raw/
+data/dpr/

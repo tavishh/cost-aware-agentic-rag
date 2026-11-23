@@ -10,9 +10,17 @@ def write_jsonl(path, rows):
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
+def cache_stem(cache):
+    """nq_X_bm25_top50.jsonl -> nq_X (unchanged for BM25); nq_X_e5_top50.jsonl -> nq_X_e5"""
+    b = os.path.basename(cache)
+    if "_bm25" in b:
+        return b.split("_bm25")[0]
+    if "_e5" in b:
+        return b.split("_e5")[0] + "_e5"
+    return b.split(".jsonl")[0]
+
 def work_dir(cache, n, model):
-    stem = os.path.basename(cache).split("_bm25")[0]
-    return f"outputs/tree_work/{stem}_n{n}_{model.split('/')[-1]}"
+    return f"outputs/tree_work/{cache_stem(cache)}_n{n}_{model.split('/')[-1]}"
 
 def load_passages(wd, need=None):
     files = ["outputs/retrieval/passages.jsonl"] + sorted(glob.glob(f"{wd}/passages_L*.jsonl"))

@@ -1,0 +1,343 @@
+Tree15 summaries: strict (whole-word) InAcc, substring InAcc in parentheses.
+Best fixed path: chosen on ddev by strict InAcc over all depths, ties broken by fewer input tokens.
+
+######## NQ BM25
+fixed path selected on nq_ddev_dpr_tree15_Llama-3.1-8B-Instruct_accumulate.jsonl (strict): R/R/W
+
+== nq_arag_test  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root          500   0.330     0.338  0.202         66
+R             500   0.450     0.456  0.330        790
+W             500   0.466     0.472  0.358        900
+R/R           500   0.480     0.486  0.350       1515
+R/W           500   0.538     0.544  0.404       1655
+W/R           500   0.484     0.490  0.368       1631
+W/W           500   0.510     0.516  0.382       1779
+R/R/R         500   0.494     0.498  0.384       2241
+R/R/W         500   0.542     0.548  0.424       2407
+R/W/R         500   0.530     0.538  0.408       2387
+R/W/W         500   0.544     0.548  0.418       2556
+W/R/R         500   0.492     0.494  0.378       2365
+W/R/W         500   0.514     0.518  0.386       2535
+W/W/R         500   0.502     0.512  0.380       2515
+W/W/W         500   0.510     0.520  0.390       2685
+oracle  R-only 0.606 (sub 0.610)   full tree 0.716 (sub 0.722)
+
+== nq_ddev_dpr  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root          500   0.334     0.340  0.210         66
+R             500   0.488     0.490  0.382        791
+W             500   0.470     0.472  0.352        899
+R/R           500   0.530     0.532  0.416       1515
+R/W           500   0.532     0.536  0.406       1661
+W/R           500   0.516     0.518  0.390       1631
+W/W           500   0.534     0.538  0.414       1777
+R/R/R         500   0.542     0.544  0.426       2240
+R/R/W         500   0.566     0.568  0.448       2410
+R/W/R         500   0.564     0.570  0.446       2393
+R/W/W         500   0.560     0.566  0.442       2561
+W/R/R         500   0.518     0.522  0.408       2364
+W/R/W         500   0.558     0.562  0.428       2533
+W/W/R         500   0.534     0.538  0.424       2509
+W/W/W         500   0.544     0.546  0.420       2686
+oracle  R-only 0.636 (sub 0.638)   full tree 0.730 (sub 0.732)
+
+== nq_dtrain_dpr  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root         4000   0.315     0.322  0.190         66
+R            4000   0.453     0.459  0.333        792
+W            3999   0.453     0.457  0.333        901
+R/R          4000   0.487     0.491  0.355       1518
+R/W          4000   0.515     0.519  0.378       1662
+W/R          3999   0.485     0.490  0.350       1634
+W/W          3998   0.495     0.500  0.364       1781
+R/R/R        4000   0.507     0.513  0.385       2244
+R/R/W        3999   0.530     0.536  0.395       2414
+R/W/R        4000   0.528     0.533  0.400       2396
+R/W/W        4000   0.525     0.529  0.395       2565
+W/R/R        3999   0.502     0.506  0.369       2367
+W/R/W        3999   0.510     0.516  0.383       2539
+W/W/R        3998   0.508     0.514  0.381       2516
+W/W/W        3997   0.506     0.512  0.380       2692
+oracle  R-only 0.606 (sub 0.612)   full tree 0.709 (sub 0.716)
+
+Summary — strict InAcc (substring in parentheses)
+| split | root | R | R/R/R | best fixed (path) | selected path | oracle R-only | oracle full | oracle − best |
+|---|---|---|---|---|---|---|---|---|
+| nq_arag_test | 0.330 (0.338) | 0.450 (0.456) | 0.494 (0.498) | 0.544 (0.548) R/W/W | 0.542 (0.548) | 0.606 (0.610) | 0.716 (0.722) | 17.2 (17.4) |
+| nq_ddev_dpr | 0.334 (0.340) | 0.488 (0.490) | 0.542 (0.544) | 0.566 (0.568) R/R/W | 0.566 (0.568) | 0.636 (0.638) | 0.730 (0.732) | 16.4 (16.4) |
+| nq_dtrain_dpr | 0.315 (0.322) | 0.453 (0.459) | 0.507 (0.513) | 0.530 (0.536) R/R/W | 0.530 (0.536) | 0.606 (0.612) | 0.709 (0.716) | 17.9 (18.1) |
+
+######## NQ e5
+fixed path selected on nq_ddev_dpr_e5_tree15_Llama-3.1-8B-Instruct_accumulate.jsonl (strict): R/W/W
+
+== nq_arag_test_e5  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root          500   0.330     0.338  0.202         66
+R             500   0.604     0.618  0.444        794
+W             500   0.560     0.568  0.416        901
+R/R           500   0.626     0.638  0.464       1523
+R/W           500   0.602     0.616  0.442       1653
+W/R           500   0.586     0.598  0.442       1633
+W/W           500   0.592     0.602  0.438       1772
+R/R/R         500   0.618     0.634  0.468       2253
+R/R/W         500   0.634     0.644  0.472       2396
+R/W/R         500   0.612     0.622  0.474       2386
+R/W/W         500   0.608     0.622  0.470       2533
+W/R/R         500   0.586     0.596  0.452       2367
+W/R/W         500   0.600     0.610  0.454       2515
+W/W/R         500   0.602     0.610  0.464       2506
+W/W/W         500   0.594     0.608  0.448       2661
+oracle  R-only 0.688 (sub 0.696)   full tree 0.740 (sub 0.746)
+
+== nq_ddev_dpr_e5  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root          500   0.334     0.340  0.210         66
+R             500   0.622     0.628  0.460        794
+W             500   0.582     0.582  0.430        900
+R/R           500   0.632     0.636  0.474       1525
+R/W           500   0.642     0.646  0.478       1652
+W/R           500   0.592     0.596  0.438       1633
+W/W           500   0.620     0.622  0.466       1770
+R/R/R         500   0.624     0.632  0.478       2256
+R/R/W         500   0.616     0.620  0.474       2400
+R/W/R         500   0.638     0.640  0.476       2381
+R/W/W         500   0.652     0.656  0.490       2530
+W/R/R         500   0.584     0.586  0.458       2365
+W/R/W         500   0.620     0.626  0.468       2519
+W/W/R         500   0.632     0.634  0.490       2504
+W/W/W         500   0.628     0.630  0.476       2660
+oracle  R-only 0.710 (sub 0.716)   full tree 0.772 (sub 0.772)
+
+== nq_dtrain_dpr_e5  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root         4000   0.315     0.322  0.189         66
+R            4000   0.598     0.602  0.430        796
+W            3999   0.559     0.565  0.404        901
+R/R          4000   0.606     0.612  0.433       1527
+R/W          4000   0.614     0.620  0.441       1658
+W/R          3999   0.578     0.582  0.421       1633
+W/W          3999   0.584     0.589  0.421       1772
+R/R/R        4000   0.609     0.616  0.449       2259
+R/R/W        4000   0.617     0.623  0.453       2403
+R/W/R        4000   0.615     0.621  0.459       2391
+R/W/W        4000   0.616     0.623  0.450       2537
+W/R/R        3999   0.586     0.591  0.433       2367
+W/R/W        3999   0.595     0.600  0.437       2518
+W/W/R        3999   0.593     0.599  0.437       2506
+W/W/W        3999   0.593     0.600  0.436       2664
+oracle  R-only 0.698 (sub 0.703)   full tree 0.753 (sub 0.756)
+
+Summary — strict InAcc (substring in parentheses)
+| split | root | R | R/R/R | best fixed (path) | selected path | oracle R-only | oracle full | oracle − best |
+|---|---|---|---|---|---|---|---|---|
+| nq_arag_test_e5 | 0.330 (0.338) | 0.604 (0.618) | 0.618 (0.634) | 0.634 (0.644) R/R/W | 0.608 (0.622) | 0.688 (0.696) | 0.740 (0.746) | 10.6 (10.2) |
+| nq_ddev_dpr_e5 | 0.334 (0.340) | 0.622 (0.628) | 0.624 (0.632) | 0.652 (0.656) R/W/W | 0.652 (0.656) | 0.710 (0.716) | 0.772 (0.772) | 12.0 (11.6) |
+| nq_dtrain_dpr_e5 | 0.315 (0.322) | 0.598 (0.602) | 0.609 (0.616) | 0.617 (0.623) R/R/W | 0.616 (0.623) | 0.698 (0.703) | 0.753 (0.756) | 13.6 (13.3) |
+
+######## musique
+fixed path selected on musique_ddev_tree15_Llama-3.1-8B-Instruct_accumulate.jsonl (strict): R/W/R
+
+== musique_test  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root          500   0.024     0.032  0.020         76
+R             500   0.120     0.122  0.088        871
+W             500   0.120     0.124  0.086        951
+R/R           500   0.136     0.138  0.096       1697
+R/W           500   0.154     0.156  0.108       1761
+W/R           500   0.132     0.138  0.096       1688
+W/W           500   0.164     0.168  0.120       1870
+R/R/R         500   0.126     0.130  0.094       2509
+R/R/W         500   0.146     0.148  0.108       2620
+R/W/R         500   0.144     0.148  0.104       2488
+R/W/W         500   0.154     0.158  0.116       2703
+W/R/R         500   0.124     0.130  0.102       2433
+W/R/W         500   0.154     0.160  0.120       2633
+W/W/R         500   0.166     0.170  0.132       2622
+W/W/W         500   0.160     0.166  0.126       2834
+oracle  R-only 0.188 (sub 0.192)   full tree 0.298 (sub 0.302)
+
+== musique_ddev  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root          500   0.066     0.068  0.040         74
+R             500   0.152     0.160  0.128        837
+W             500   0.144     0.150  0.120        906
+R/R           500   0.172     0.178  0.150       1626
+R/W           500   0.196     0.200  0.166       1688
+W/R           500   0.156     0.164  0.134       1624
+W/W           500   0.174     0.180  0.150       1786
+R/R/R         500   0.164     0.168  0.142       2403
+R/R/W         500   0.186     0.194  0.166       2517
+R/W/R         500   0.204     0.212  0.182       2395
+R/W/W         500   0.202     0.206  0.178       2591
+W/R/R         500   0.168     0.170  0.152       2332
+W/R/W         500   0.180     0.186  0.154       2538
+W/W/R         500   0.174     0.180  0.152       2503
+W/W/W         500   0.186     0.188  0.166       2701
+oracle  R-only 0.240 (sub 0.248)   full tree 0.376 (sub 0.386)
+
+== musique_dtrain  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root         4000   0.063     0.067  0.036         74
+R            4000   0.165     0.168  0.130        842
+W            4000   0.180     0.184  0.145        910
+R/R          4000   0.172     0.175  0.137       1636
+R/W          3998   0.212     0.217  0.173       1706
+W/R          4000   0.183     0.187  0.152       1632
+W/W          4000   0.210     0.213  0.173       1801
+R/R/R        4000   0.167     0.170  0.137       2425
+R/R/W        3998   0.214     0.218  0.176       2531
+R/W/R        3998   0.221     0.225  0.182       2421
+R/W/W        3998   0.226     0.231  0.186       2613
+W/R/R        4000   0.184     0.187  0.154       2350
+W/R/W        4000   0.214     0.218  0.175       2555
+W/W/R        4000   0.213     0.217  0.178       2522
+W/W/W        4000   0.220     0.223  0.182       2729
+oracle  R-only 0.257 (sub 0.264)   full tree 0.422 (sub 0.429)
+
+Summary — strict InAcc (substring in parentheses)
+| split | root | R | R/R/R | best fixed (path) | selected path | oracle R-only | oracle full | oracle − best |
+|---|---|---|---|---|---|---|---|---|
+| musique_test | 0.024 (0.032) | 0.120 (0.122) | 0.126 (0.130) | 0.166 (0.170) W/W/R | 0.144 (0.148) | 0.188 (0.192) | 0.298 (0.302) | 13.2 (13.2) |
+| musique_ddev | 0.066 (0.068) | 0.152 (0.160) | 0.164 (0.168) | 0.204 (0.212) R/W/R | 0.204 (0.212) | 0.240 (0.248) | 0.376 (0.386) | 17.2 (17.4) |
+| musique_dtrain | 0.063 (0.067) | 0.165 (0.168) | 0.167 (0.170) | 0.226 (0.231) R/W/W | 0.221 (0.225) | 0.257 (0.264) | 0.422 (0.429) | 19.6 (19.8) |
+
+######## 2wiki
+fixed path selected on 2wiki_ddev_tree15_Llama-3.1-8B-Instruct_accumulate.jsonl (strict): R/R/W
+
+== 2wiki_test  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root          500   0.288     0.292  0.194         72
+R             500   0.364     0.366  0.302        923
+W             500   0.366     0.370  0.292        945
+R/R           500   0.366     0.370  0.326       1884
+R/W           500   0.400     0.404  0.342       1822
+W/R           500   0.364     0.372  0.324       1750
+W/W           500   0.364     0.370  0.314       1877
+R/R/R         500   0.390     0.394  0.356       2825
+R/R/W         500   0.382     0.386  0.338       2810
+R/W/R         500   0.394     0.398  0.346       2577
+R/W/W         500   0.396     0.402  0.348       2764
+W/R/R         500   0.366     0.372  0.330       2565
+W/R/W         500   0.382     0.384  0.338       2715
+W/W/R         500   0.352     0.356  0.316       2686
+W/W/W         500   0.366     0.370  0.322       2855
+oracle  R-only 0.534 (sub 0.538)   full tree 0.638 (sub 0.642)
+
+== 2wiki_ddev  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root          500   0.286     0.288  0.168         72
+R             500   0.332     0.340  0.240        944
+W             500   0.392     0.398  0.272        929
+R/R           500   0.362     0.368  0.302       1891
+R/W           500   0.376     0.384  0.302       1840
+W/R           500   0.384     0.390  0.318       1717
+W/W           500   0.378     0.384  0.290       1879
+R/R/R         500   0.380     0.386  0.332       2877
+R/R/W         500   0.412     0.418  0.340       2821
+R/W/R         500   0.370     0.376  0.308       2571
+R/W/W         500   0.350     0.360  0.276       2771
+W/R/R         500   0.344     0.352  0.288       2522
+W/R/W         500   0.376     0.382  0.296       2670
+W/W/R         500   0.380     0.386  0.312       2664
+W/W/W         500   0.376     0.382  0.294       2849
+oracle  R-only 0.542 (sub 0.550)   full tree 0.616 (sub 0.624)
+
+== 2wiki_dtrain  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root         4000   0.265     0.268  0.168         72
+R            4000   0.346     0.351  0.265        940
+W            4000   0.354     0.359  0.268        945
+R/R          4000   0.351     0.356  0.294       1879
+R/W          3999   0.366     0.371  0.297       1840
+W/R          3999   0.360     0.365  0.291       1736
+W/W          4000   0.360     0.365  0.288       1873
+R/R/R        4000   0.360     0.366  0.313       2836
+R/R/W        4000   0.374     0.379  0.315       2816
+R/W/R        3999   0.374     0.380  0.313       2600
+R/W/W        3999   0.368     0.374  0.307       2786
+W/R/R        3999   0.362     0.367  0.305       2539
+W/R/W        3999   0.385     0.390  0.315       2700
+W/W/R        4000   0.372     0.378  0.308       2662
+W/W/W        4000   0.363     0.368  0.297       2854
+oracle  R-only 0.517 (sub 0.524)   full tree 0.618 (sub 0.625)
+
+Summary — strict InAcc (substring in parentheses)
+| split | root | R | R/R/R | best fixed (path) | selected path | oracle R-only | oracle full | oracle − best |
+|---|---|---|---|---|---|---|---|---|
+| 2wiki_test | 0.288 (0.292) | 0.364 (0.366) | 0.390 (0.394) | 0.400 (0.404) R/W | 0.382 (0.386) | 0.534 (0.538) | 0.638 (0.642) | 23.8 (23.8) |
+| 2wiki_ddev | 0.286 (0.288) | 0.332 (0.340) | 0.380 (0.386) | 0.412 (0.418) R/R/W | 0.412 (0.418) | 0.542 (0.550) | 0.616 (0.624) | 20.4 (20.6) |
+| 2wiki_dtrain | 0.265 (0.268) | 0.346 (0.351) | 0.360 (0.366) | 0.385 (0.390) W/R/W | 0.374 (0.379) | 0.517 (0.524) | 0.618 (0.625) | 23.4 (23.5) |
+
+######## hotpotqa
+fixed path selected on hotpotqa_ddev_tree15_Llama-3.1-8B-Instruct_accumulate.jsonl (strict): R/W
+
+== hotpotqa_test  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root          500   0.226     0.238  0.148         76
+R             500   0.424     0.434  0.300        610
+W             500   0.396     0.404  0.294        703
+R/R           500   0.440     0.448  0.328       1154
+R/W           500   0.482     0.486  0.370       1272
+W/R           500   0.388     0.396  0.304       1194
+W/W           500   0.414     0.418  0.318       1393
+R/R/R         500   0.438     0.448  0.338       1697
+R/R/W         500   0.458     0.468  0.350       1849
+R/W/R         500   0.474     0.476  0.358       1755
+R/W/W         500   0.490     0.496  0.384       1976
+W/R/R         500   0.408     0.414  0.330       1692
+W/R/W         500   0.412     0.418  0.318       1922
+W/W/R         500   0.430     0.434  0.336       1899
+W/W/W         500   0.426     0.430  0.330       2133
+oracle  R-only 0.536 (sub 0.542)   full tree 0.632 (sub 0.638)
+
+== hotpotqa_ddev  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root          500   0.244     0.252  0.140         76
+R             500   0.466     0.476  0.304        622
+W             500   0.400     0.412  0.272        706
+R/R           500   0.468     0.482  0.332       1159
+R/W           500   0.518     0.528  0.370       1283
+W/R           500   0.418     0.434  0.300       1205
+W/W           500   0.424     0.434  0.302       1389
+R/R/R         500   0.472     0.484  0.328       1692
+R/R/W         500   0.508     0.524  0.372       1857
+R/W/R         500   0.484     0.496  0.356       1766
+R/W/W         500   0.500     0.510  0.356       1990
+W/R/R         500   0.412     0.430  0.306       1699
+W/R/W         500   0.454     0.470  0.332       1928
+W/W/R         500   0.444     0.452  0.328       1891
+W/W/W         500   0.444     0.454  0.308       2117
+oracle  R-only 0.580 (sub 0.590)   full tree 0.654 (sub 0.664)
+
+== hotpotqa_dtrain  (substring column vs stored metrics: 0 mismatches)
+path        nodes   InAcc InAcc_sub     EM cum_tok_in
+root         4000   0.252     0.257  0.150         75
+R            4000   0.442     0.452  0.296        617
+W            4000   0.410     0.418  0.272        706
+R/R          4000   0.447     0.456  0.322       1161
+R/W          4000   0.466     0.475  0.333       1281
+W/R          4000   0.415     0.423  0.302       1204
+W/W          4000   0.431     0.440  0.311       1397
+R/R/R        4000   0.445     0.454  0.330       1706
+R/R/W        4000   0.465     0.474  0.339       1860
+R/W/R        4000   0.469     0.478  0.345       1774
+R/W/W        4000   0.470     0.479  0.343       1989
+W/R/R        4000   0.416     0.425  0.306       1701
+W/R/W        4000   0.442     0.451  0.328       1932
+W/W/R        4000   0.429     0.439  0.319       1898
+W/W/W        4000   0.446     0.456  0.325       2127
+oracle  R-only 0.540 (sub 0.548)   full tree 0.640 (sub 0.648)
+
+Summary — strict InAcc (substring in parentheses)
+| split | root | R | R/R/R | best fixed (path) | selected path | oracle R-only | oracle full | oracle − best |
+|---|---|---|---|---|---|---|---|---|
+| hotpotqa_test | 0.226 (0.238) | 0.424 (0.434) | 0.438 (0.448) | 0.490 (0.496) R/W/W | 0.482 (0.486) | 0.536 (0.542) | 0.632 (0.638) | 14.2 (14.2) |
+| hotpotqa_ddev | 0.244 (0.252) | 0.466 (0.476) | 0.472 (0.484) | 0.518 (0.528) R/W | 0.518 (0.528) | 0.580 (0.590) | 0.654 (0.664) | 13.6 (13.6) |
+| hotpotqa_dtrain | 0.252 (0.257) | 0.442 (0.452) | 0.445 (0.454) | 0.470 (0.479) R/W/W | 0.466 (0.475) | 0.540 (0.548) | 0.640 (0.648) | 17.0 (16.9) |
+
+######## Notes
+- "oracle − best" uses each split's own best fixed path. For reporting, use the ddev-selected path instead.
+- Test headroom = oracle full − ddev-selected path (strict, substring in parentheses):
+  NQ BM25 17.4 (17.4) | NQ e5 13.2 (12.4) | MuSiQue 15.4 (15.4) | 2Wiki 25.6 (25.6) | HotpotQA 15.0 (15.2)
+- MuSiQue dtrain/ddev come from the original train set (dev too small); 2Wiki/HotpotQA dtrain/ddev come from the original dev set, matching test. All splits use the single reference answer (no aliases).

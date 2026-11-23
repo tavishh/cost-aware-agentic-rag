@@ -1,7 +1,10 @@
 import json, string, unicodedata
 from pyserini.search.lucene import LuceneSearcher
 
-searcher = LuceneSearcher.from_prebuilt_index("wikipedia-dpr-100w")
+import os
+# BM25_INDEX=<path to a local Lucene index> switches corpus (e.g. multi-hop); default = DPR wiki (NQ).
+_idx = os.environ.get("BM25_INDEX")
+searcher = LuceneSearcher(_idx) if _idx else LuceneSearcher.from_prebuilt_index("wikipedia-dpr-100w")
 
 def get_text(docid):
     return json.loads(searcher.doc(docid).raw())["contents"]
