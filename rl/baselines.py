@@ -27,7 +27,7 @@ from rl.tree_data import load_trees, split_roots
 
 
 def play(env, choose):
-    """Per-question results: list of (reward, correct, abstained, rc, lmc)."""
+    """Per-question results: (reward, correct, abstained, rc, lmc, correct_substring)."""
     out = []
     for qid in env.roots:
         node_id, done, total = env.reset(qid), False, 0.0
@@ -35,7 +35,8 @@ def play(env, choose):
             node_id, r, done, info = env.step(choose(node_id))
             total += r
         out.append((total, info["correct"] or 0, info["abstained"],
-                    info["retrieval_calls"], info["llm_calls"]))
+                    info["retrieval_calls"], info["llm_calls"],
+                    info["correct_substring"] or 0))
     return out
 
 
@@ -44,6 +45,9 @@ def summary(rows):
     answered = n - sum(r[2] for r in rows)
     return {"reward": sum(r[0] for r in rows) / n,
             "InAcc": sum(r[1] for r in rows) / n,
+            "InAcc_sub": sum(r[5] for r in rows) / n,
+            # Hallucination: answered and wrong (strict), as a share of all questions.
+            "halluc": sum(1 - r[2] - r[1] for r in rows) / n,
             "abstain": sum(r[2] for r in rows) / n,
             "sel_acc": sum(r[1] for r in rows) / answered if answered else 0.0,
             "RC": sum(r[3] for r in rows) / n,
@@ -120,7 +124,10 @@ def tune_threshold(val_env, val_nodes):
         vals = sorted(confidence(i, signal) for i in val_ids)
         cuts = sorted({vals[min(len(vals) - 1, int(q * len(vals)))] for q in QUANTILES})
         for t in cuts + [float("inf")]:
-            for tl in [c for c in cuts if c <= t] + [float("inf")]:
+            # Without ABSTAIN the rule must answer at the last step: t_last = -inf.
+            last = ([c for c in cuts if c <= t] + [float("inf")]
+                    if val_env.allow_abstain else [float("-inf")])
+            for tl in last:
                 for k in (0, 1, 2, 3):
                     configs.append((signal, t, tl, k))
     return max(configs,

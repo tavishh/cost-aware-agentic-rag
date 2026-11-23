@@ -31,12 +31,12 @@ class QNet(nn.Module):
         return self.net(x)
 
 
-def featurize(nodes, scaler):
+def featurize(nodes, scaler, allow_abstain=True):
     """Precompute scaled features and action masks for every node, once."""
     ids = list(nodes)
     X = torch.tensor([scaler.transform(node_features(nodes, i)) for i in ids],
                      dtype=torch.float32)
-    M = torch.tensor([action_mask(nodes, i) for i in ids], dtype=torch.bool)
+    M = torch.tensor([action_mask(nodes, i, allow_abstain) for i in ids], dtype=torch.bool)
     return {i: k for k, i in enumerate(ids)}, X, M
 
 
