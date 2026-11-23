@@ -3,8 +3,8 @@ split into GPU search steps (vllm env) and annotation steps (pyserini env):
 
   search-cache    questions -> raw top-50 cache                      (vllm env, GPU)
   annotate-cache  raw cache -> cache with has_answer + passages_L0   (pyserini env)
-  search-layer    rewrites_L{l} -> rankings_L{l}.raw                 (vllm env, GPU)
-  annotate-layer  rankings_L{l}.raw -> rankings_L{l} + passages_L{l} (pyserini env)
+  search-layer    rewrites_L{l} -> raw_rankings_L{l}                 (vllm env, GPU)
+  annotate-layer  raw_rankings_L{l} -> rankings_L{l} + passages_L{l} (pyserini env)
 
 Output files/formats are identical to the BM25 pipeline, so tree_expand.py / tree_answer.py
 need no retriever-specific logic. has_answer uses the same get_text/has_answer as BM25.
@@ -16,8 +16,8 @@ os.chdir(ROOT); sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, 
 import argparse, glob, json
 from tree_common import load_jsonl, write_jsonl, work_dir
 
-EMB_DIR = os.environ.get("E5_EMB_DIR", "/work/neu/p2026_0112_neu/e5/emb")
-MODEL_DIR = os.environ.get("E5_MODEL_DIR", os.path.expanduser("~/models/e5-base-v2"))
+EMB_DIR = os.environ.get("E5_EMB_DIR")          # dir with emb_XX.npy / ids_XX.npy (required for search)
+MODEL_DIR = os.environ.get("E5_MODEL_DIR", "intfloat/e5-base-v2")   # local copy or HF id
 
 
 # ---------------- GPU search (vllm env) ----------------
@@ -25,6 +25,7 @@ def e5_search(queries, k, chunk=500_000, qbs=1024):
     """Exact inner-product top-k over all shards. Returns [(docids[str], scores[float])]."""
     if not queries:
         return []
+    assert EMB_DIR, "set E5_EMB_DIR to the directory with emb_XX.npy / ids_XX.npy"
     import numpy as np, torch
     from transformers import AutoTokenizer, AutoModel
 

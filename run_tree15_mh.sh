@@ -1,22 +1,28 @@
 #!/bin/bash
 #SBATCH --partition=rtx-devel
-#SBATCH --account=p2026_0112_neu
 #SBATCH --qos=interactive
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=04:00:00
 #SBATCH --output=logs/tree15_mh_%j.out
-# Usage: DS=musique SPLITS="test ddev dtrain" sbatch run_tree15_mh.sh
-# Same settings as run_tree15.sh (BM25, Llama-3.1-8B, k=5, accumulate); only the corpus differs.
-
+# Multi-hop version of run_tree15.sh (BM25, Llama-3.1-8B, k=5, accumulate); only the corpus differs.
+# Usage (from the project root):
+#   MH_INDEX_DIR=<dir with lucene-{hotpotqa,2wikimultihopqa,musique}> DS=musique SPLITS="test ddev dtrain" \
+#     sbatch -A <slurm account> run_tree15_mh.sh
+# (or set BM25_INDEX directly to one index)
 set -e
+: "${DS:?set DS to hotpotqa, 2wikimultihopqa or musique}"
+if [ -z "$BM25_INDEX" ]; then
+  : "${MH_INDEX_DIR:?set MH_INDEX_DIR (or BM25_INDEX)}"
+  BM25_INDEX=$MH_INDEX_DIR/lucene-$DS
+fi
+export BM25_INDEX
 module load miniforge3/25.3.0-3
 eval "$(conda shell.bash hook)"
 export HF_HOME=${HF_HOME:-$HOME/.cache/huggingface}
-export HF_HUB_OFFLINE=1
-export BM25_INDEX=${BM25_INDEX:-/work/neu/p2026_0112_neu/mh_indexes/lucene-$DS}
-cd ~/cost-aware-agentic-rag
+export HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-1}
+cd "${PROJECT_DIR:-$SLURM_SUBMIT_DIR}"
 
 SHORT=$DS; [ "$DS" = "2wikimultihopqa" ] && SHORT=2wiki
 MODEL=meta-llama/Llama-3.1-8B-Instruct

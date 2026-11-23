@@ -11,7 +11,7 @@ module load miniforge3/25.3.0-3
 eval "$(conda shell.bash hook)"
 export HF_HOME=${HF_HOME:-$HOME/.cache/huggingface}
 export HF_HUB_OFFLINE=1
-cd ~/cost-aware-agentic-rag
+cd "${PROJECT_DIR:-$SLURM_SUBMIT_DIR}"
 
 MODEL=meta-llama/Llama-3.1-8B-Instruct
 declare -A N=([test]=500 [train]=800 [dev]=200 [arag_test]=500 [dtrain]=4000 [ddev]=500 [dtraintop]=1137 [ddevtop]=141)

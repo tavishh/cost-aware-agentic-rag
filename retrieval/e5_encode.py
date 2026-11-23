@@ -1,10 +1,11 @@
 """Encode one corpus shard with e5-base-v2 -> emb_XX.npy (fp16, L2-normalized) + ids_XX.npy (int64)."""
-import argparse, json, time
+import argparse, json, os, time
 import numpy as np
 import torch
 from transformers import AutoTokenizer, AutoModel
 
-MODEL = "/home/li_z33_neu/models/e5-base-v2"
+# Local copy or HF id; set E5_MODEL_DIR on clusters without HF access.
+MODEL = os.environ.get("E5_MODEL_DIR", "intfloat/e5-base-v2")
 
 
 def mean_pool(h, m):
