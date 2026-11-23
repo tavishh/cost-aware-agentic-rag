@@ -96,17 +96,21 @@ class VerificationResult:
     # For grounding: YES means all factual content of the draft is supported.
     verdict: Verdict
     evidence_ids: Tuple[str, ...]
-    explanation: str
     verifier_version: str
-    prompt_version: str
+    explanation: Optional[str] = None
+    prompt_version: Optional[str] = None
     score: Optional[float] = None
     cost: Cost = Cost()
 
     def __post_init__(self):
         if not isinstance(self.verdict, Verdict):
             raise ValueError("verdict must be a Verdict")
-        if not self.verifier_version or not self.prompt_version or not self.explanation:
-            raise ValueError("verifier versions and explanation are required")
+        if not self.verifier_version:
+            raise ValueError("verifier_version is required")
+        for name in ("explanation", "prompt_version"):
+            value = getattr(self, name)
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                raise ValueError(f"{name} must be nonempty text or None")
         if self.score is not None and (not math.isfinite(self.score) or not 0 <= self.score <= 1):
             raise ValueError("score must be finite and in [0, 1]")
         if self.verdict is Verdict.UNKNOWN and self.score is not None:
@@ -135,8 +139,13 @@ class Observation:
         if any(a not in (Action.RETRIEVE, Action.REWRITE) for a in self.action_history):
             raise ValueError("observations may contain only nonterminal action history")
         ids = [p.docid for p in self.passages]
-        if len(ids) != len(set(ids)):
-            raise ValueError("duplicate passage IDs")
+        # The generator may see the same passage again after query rewriting.
+        # Preserve occurrences/order, but reject inconsistent text for one ID.
+        texts = {}
+        for passage in self.passages:
+            if passage.docid in texts and texts[passage.docid] != passage.text:
+                raise ValueError("conflicting text for one passage ID")
+            texts[passage.docid] = passage.text
         for result in (self.sufficiency, self.grounding):
             if result is not None and not set(result.evidence_ids).issubset(ids):
                 raise ValueError("verifier cited evidence outside the observation")

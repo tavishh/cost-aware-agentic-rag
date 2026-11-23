@@ -32,7 +32,7 @@ Recent work has shown that simple uncertainty-based thresholds often match compl
 
 We formulate the problem as a **Markov Decision Process (MDP)**:
 
-- **State:** the question, evidence retrieved so far, step count, and cheap signals such as LLM confidence (token entropy), retriever relevance scores, and a grounding verifier score.
+- **State:** the question, evidence retrieved so far, step count, and cheap signals such as LLM confidence (likelihood signals and a top-20 grouped-tail entropy approximation), retriever relevance scores, and a grounding verifier score.
 - **Actions:** `ANSWER`, `RETRIEVE`, `REWRITE`, `ABSTAIN`.
 - **Reward:** positive for correct answers, a penalty for wrong or unsupported answers (larger than the abstain reward), and a small cost per retrieval or LLM call.
 
@@ -89,6 +89,20 @@ cd cost-aware-agentic-rag
 pip install -r requirements.txt
 ```
 
+## Uncertainty methods and grounding verifier
+
+The first Role 3 deliverable provides shared inference contracts and a synthetic
+verifier fixture. See [the contract and integration guide](docs/role3_contract.md)
+for interfaces, uncertainty semantics, cache requirements and team handoffs.
+The node adapter and offline NLI scorer are described in [verifier/README.md](verifier/README.md).
+The existing tuned uncertainty policies remain in `rl/baselines.py`.
+
+Run the dependency-free contract tests from the repository root:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py' -v
+```
+
 ## Roadmap
 
 - [ ] Project proposal
@@ -113,17 +127,3 @@ pip install -r requirements.txt
 ## License
 
 TBD
-
-
-## Role 3 development
-
-The first Role 3 deliverable provides shared inference contracts and a synthetic
-verifier fixture. See [the contract and integration guide](docs/role3_contract.md)
-for interfaces, uncertainty semantics, cache requirements and team handoffs.
-Model adapters and threshold policies are subsequent work.
-
-Run the dependency-free contract tests from the repository root:
-
-```bash
-python3 -m unittest discover -s tests -p 'test_*.py' -v
-```
