@@ -1,7 +1,10 @@
 """Build {qid, question, gold, support_titles} question files for the multi-hop datasets.
   test   = Adaptive-RAG processed_data/<ds>/test_subsampled.jsonl (500; from original dev)
-  dtrain = 4000, ddev = 500, sampled (seed 0) from the original TRAIN set, excluding any
-           question that appears in test_subsampled or dev_500_subsampled (zero leakage).
+  dtrain = 4000, ddev = 500, sampled (seed 0) from the original DEV set (--source dev, default for
+           hotpotqa / 2wikimultihopqa, same distribution as test) or TRAIN set (--source train, needed
+           for musique whose dev is too small), excluding any question in test_subsampled or
+           dev_500_subsampled (zero leakage).
+  gold = the single reference answer, no aliases (matches Adaptive-RAG's test files); --aliases adds them.
 Run from ~/Downloads/Adaptive-RAG:
   python build_mh_questions.py musique --out_dir "$MAC/outputs/retrieval"
 """
@@ -33,13 +36,14 @@ def load_processed(path):
 
 
 # ---------- original train sets ----------
-def hotpotqa_train(raw):
+def hotpotqa_pool(raw, split, aliases):
     import pandas as pd
-    files = sorted(glob.glob(os.path.join(raw, "hotpotqa", "hf", "distractor", "train", "*.parquet")))
+    sub = "train" if split == "train" else "validation"
+    files = sorted(glob.glob(os.path.join(raw, "hotpotqa", "hf", "distractor", sub, "*.parquet")))
     assert files, "hotpotqa parquet not found"
     for fn in files:
         for r in pd.read_parquet(fn).itertuples():
-            yield {"qid": f"hotpotqa_train_{r.id}", "question": r.question, "gold": [r.answer],
+            yield {"qid": f"hotpotqa_{split}_{r.id}", "question": r.question, "gold": [r.answer],
                    "support_titles": sorted(set(r.supporting_facts["title"]))}
 
 
@@ -62,25 +66,26 @@ def load_2wiki_aliases(raw):
     return out
 
 
-def twowiki_train(raw):
-    aliases = load_2wiki_aliases(raw)
-    print(f"2wiki aliases loaded: {len(aliases)}")
-    for x in json.load(open(os.path.join(raw, "2wikimultihopqa", "train.json"), encoding="utf-8")):
-        gold = [x["answer"]] + aliases.get(x.get("answer_id", ""), [])
-        yield {"qid": f"2wiki_train_{x['_id']}", "question": x["question"],
+def twowiki_pool(raw, split, aliases):
+    al = load_2wiki_aliases(raw) if aliases else {}
+    name = "train.json" if split == "train" else "dev.json"
+    for x in json.load(open(os.path.join(raw, "2wikimultihopqa", name), encoding="utf-8")):
+        gold = [x["answer"]] + al.get(x.get("answer_id", ""), [])
+        yield {"qid": f"2wiki_{split}_{x['_id']}", "question": x["question"],
                "gold": list(dict.fromkeys(g for g in gold if g)),
                "support_titles": sorted({t for t, _ in x["supporting_facts"]})}
 
 
-def musique_train(raw):
-    for line in open(os.path.join(raw, "musique", "musique_ans_v1.0_train.jsonl"), encoding="utf-8"):
+def musique_pool(raw, split, aliases):
+    name = "musique_ans_v1.0_train.jsonl" if split == "train" else "musique_ans_v1.0_dev.jsonl"
+    for line in open(os.path.join(raw, "musique", name), encoding="utf-8"):
         if not line.strip():
             continue
         x = json.loads(line)
         if not x.get("answerable", True):
             continue
-        gold = [x["answer"]] + x.get("answer_aliases", [])
-        yield {"qid": f"musique_train_{x['id']}", "question": x["question"],
+        gold = [x["answer"]] + (x.get("answer_aliases", []) if aliases else [])
+        yield {"qid": f"musique_{split}_{x['id']}", "question": x["question"],
                "gold": list(dict.fromkeys(g for g in gold if g)),
                "support_titles": sorted({p["title"] for p in x["paragraphs"] if p.get("is_supporting")})}
 
@@ -101,7 +106,12 @@ if __name__ == "__main__":
     ap.add_argument("--n_train", type=int, default=4000)
     ap.add_argument("--n_dev", type=int, default=500)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--source", choices=["train", "dev"], default=None,
+                    help="where dtrain/ddev come from (default: dev for hotpotqa/2wiki, train for musique)")
+    ap.add_argument("--aliases", action="store_true", help="add answer aliases to gold (default: off)")
     a = ap.parse_args()
+    a.source = a.source or ("train" if a.dataset == "musique" else "dev")
+    print(f"dtrain/ddev source: original {a.source} set   aliases: {a.aliases}")
     short = {"hotpotqa": "hotpotqa", "2wikimultihopqa": "2wiki", "musique": "musique"}[a.dataset]
 
     test = load_processed(os.path.join(a.processed, a.dataset, "test_subsampled.jsonl"))
@@ -109,10 +119,11 @@ if __name__ == "__main__":
     print(f"test: {len(test)}  sample: {test[0]}")
     banned = {norm_q(r["question"]) for r in test + dev500}
 
-    pool = {"hotpotqa": hotpotqa_train, "2wikimultihopqa": twowiki_train,
-            "musique": musique_train}[a.dataset](a.raw)
+    pool = {"hotpotqa": hotpotqa_pool, "2wikimultihopqa": twowiki_pool,
+            "musique": musique_pool}[a.dataset](a.raw, a.source, a.aliases)
     pool = [r for r in pool if r["gold"] and norm_q(r["question"]) not in banned]
-    print(f"train pool after exclusion: {len(pool)}")
+    print(f"{a.source} pool after exclusion: {len(pool)}")
+    assert len(pool) >= a.n_train + a.n_dev, f"pool too small ({len(pool)}) for {a.n_train}+{a.n_dev}"
     random.Random(a.seed).shuffle(pool)
     dtrain, ddev = pool[:a.n_train], pool[a.n_train:a.n_train + a.n_dev]
     assert not ({norm_q(r["question"]) for r in dtrain} & {norm_q(r["question"]) for r in ddev})
