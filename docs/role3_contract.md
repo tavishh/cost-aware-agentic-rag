@@ -1,7 +1,8 @@
 # Role 3 shared contract
 
-Status: proposed v1 implementation for team review. This defines interfaces and
-test data; it does not implement an LLM, a verifier, a threshold policy, or RL.
+Status: shared contracts with a native-node adapter and initial offline verifier. This defines interfaces and
+test data. The initial NLI grounding implementation is documented in
+`verifier/README.md`; existing RL and threshold policies live in `rl/`.
 Python 3.9+ and the standard library suffice for the contract tests.
 
 ## Scope and semantics
@@ -35,7 +36,8 @@ An uncomputed verifier result is `None`, distinct from an attempted UNKNOWN.
 Optional verifier scores must be in [0, 1], higher meaning more support. They
 are not calibrated probabilities unless separately validated. UNKNOWN has no
 score. The verifier version must identify model and judgment/aggregation method;
-the prompt version identifies its exact prompt. Evidence IDs must reference
+the optional prompt version identifies its exact prompt for prompted models.
+NLI models need not supply a prompt version or a natural-language explanation. Evidence IDs must reference
 passages actually supplied. Claim-level diagnostics can be added in a future
 schema version when the verifier implementation selects an aggregation method.
 
@@ -55,35 +57,19 @@ draft, compute signals, and explicitly construct an `Observation`. Do not pass
 the retrieval row wholesale to a policy. `has_answer` uses gold-answer substring
 matching and is solely offline retrieval metadata.
 
-Proposed future state-cache envelope (not yet a cache builder or loader):
+The canonical state cache is Chester's existing tree JSONL. Do not introduce a
+second envelope. `common/node_adapter.py` converts raw nodes to observations,
+resolves exact `context_docids`, maps field names and seconds to milliseconds,
+and follows `parent_id` to accumulate each visited draft and rewrite once.
+Gold, metrics and `has_answer` are never copied to the observation. The adapter
+preserves repeated passage occurrences because the generator saw them too.
 
-```json
-{
-  "schema_version": 1,
-  "state_id": "hash-of-versioned-state-inputs",
-  "observation": "Observation.to_dict() payload",
-  "offline_labels": {
-    "gold": [], "has_answer": [], "em": null, "f1": null,
-    "context_answerability": "unknown", "excluded_docids": []
-  },
-  "transitions": {"RETRIEVE": "next-state-id", "REWRITE": "next-state-id"}
-}
-```
-
-The envelope above is illustrative, not a valid Observation payload. Gold,
-correctness, answerability, removal labels and oracle outputs must remain outside
-the policy observation. Role 4 may use them for rewards or oracle analysis only.
-Use `Observation.to_dict()` for JSON export; v1 does not provide deserialization.
-Construct typed objects explicitly when adding a loader, rejecting unknown fields
-and unsupported schema versions rather than silently dropping them.
-
-Cache identity must include dataset revision/split/qid, corpus/index version,
-current query, ordered passage IDs AND content hashes, ordered action history,
-exclusions, generator model/prompt/decoding versions, uncertainty method, verifier
-model/method/prompt versions, schema version, and remaining budget. A change in
-any of those invalidates reuse. Use canonical JSON and a cryptographic hash;
-do not use Python's process-dependent `hash()`. Rewards remain uncached so they
-can be retuned. Roles 1 and 4 should agree on the envelope before implementing it.
+`node_id` identifies a node within a versioned dataset/retriever run. BM25 and
+e5 reuse IDs, so keep their score files separate. Model/prompt/cache revisions
+remain part of experiment identity, not a replacement for native node IDs.
+The adapter's `greedy_top1_mean_nll_v1` is an explicit proxy over cached positions
+when greedy decoding is confirmed. It does not claim to reconstruct cleaned
+answer token alignment. Selected-token logprobs remain None in that adapter.
 
 `Cost` on each result records that operation's calls/tokens/latency. Observation
 `cumulative_cost` records all work so far, including retrieval, query rewriting,

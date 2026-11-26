@@ -1,0 +1,6 @@
+# Optional model dependencies; contract and adapter tests use only the stdlib.
+torch>=2.6,<3
+transformers>=4.45,<5
+sentencepiece>=0.2,<1
+protobuf>=4,<7
+huggingface_hub>=0.26,<1
